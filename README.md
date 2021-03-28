@@ -8,3 +8,6 @@ The default number of retries before considering things to be "down" is 2.
 The default time between retries is set to 30 seconds (for development purposes), but should be set to something more like 15 minutes so that we don't end up rebooting the modem too frequently by being too sensitive.
 
 The script is intended to be invoked via cron (or some other scheduler) every 30-60 minutes for maximum effect.
+
+# Requirements
+For now, this is primarily just a python3 script, but there is currently a dependency on the `pingparsing` library from pypi.  This lib is not available as a package in Fedora, so it must be installed via `pip3 install pingparsing`
