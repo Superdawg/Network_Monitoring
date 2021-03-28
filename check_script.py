@@ -2,15 +2,16 @@
 #
 # Synopsis:
 # ./check_script.py --addresses a.b.c.d[,...]
-#                 [ --pause-time int ]
+#                 [ --retry-interval int ]
+#                 [ --retry-count int ]
 #                 [ --exec-on-fail /path/to/script ]
 
 from argparse import *
 
-import os
 import logging
-import subprocess
+import os
 import pingparsing
+import subprocess
 
 class Logger(object):
     def __init__(self, name, filename=None):
@@ -48,15 +49,12 @@ class NetworkMonitor(object):
 
         self.storeAddresses(addresses)
 
-    def storeAddresses(self, addresses):
-        if addresses is None:
-            self.addressList = { '1.1.1.1': {},
-                                 '4.2.2.2': {},
-                                 '8.8.8.8': {} }
-        else:
-            self.addressList = {}
-            for address in addresses:
-                self.addressList[address] = {}
+    def actOnFailure(self):
+        """
+        Now that we have determined that we have sufficiently failed, then we
+        can move forward with performing the pre-determined action to resolve.
+        """
+        self.log.error("We FAILED BAD, we need to DO SOMETHING about it")
 
     def run(self):
         # Continue to run ping tests until we determine that we're not
@@ -77,12 +75,15 @@ class NetworkMonitor(object):
             if loop > self.retryCount:
                 self.actOnFailure()
 
-    def actOnFailure(self):
-        """
-        Now that we have determined that we have sufficiently failed, then we
-        can move forward with performing the pre-determined action to resolve.
-        """
-        self.log.error("We FAILED BAD, we need to DO SOMETHING about it")
+    def storeAddresses(self, addresses):
+        if addresses is None:
+            self.addressList = { '1.1.1.1': {},
+                                 '4.2.2.2': {},
+                                 '8.8.8.8': {} }
+        else:
+            self.addressList = {}
+            for address in addresses:
+                self.addressList[address] = {}
 
     def processResults(self):
         """
@@ -94,6 +95,10 @@ class NetworkMonitor(object):
             if self.addressList[address]['Stats']['packet_loss_rate'] > 0.5:
                 self.failedPing.append(address)
         self.sleepIfFailed()
+
+    def printStats(self):
+            import pprint
+            pprint.pprint(self.addressList)
 
     def sleepIfFailed(self):
         """
@@ -114,15 +119,14 @@ class NetworkMonitor(object):
             self.log.warn("Failed rate exceeds 50% Setting Retry in %s seconds" % self.retryInterval)
             time.sleep(self.retryInterval)
 
-    def printStats(self):
-            import pprint
-            pprint.pprint(self.addressList)
-
 if __name__ == "__main__":
     addresses = [ '4.2.2.2',
                   '8.8.8.8',
                   '1.1.1.1' ]
+    retryInterval = 30
+    retryCount = 2
 
-    NM = NetworkMonitor(retryInterval=30, retryCount=2, addresses=addresses)
+    NM = NetworkMonitor(retryInterval = retryInterval,
+                        retryCount = retryCount,
+                        addresses = addresses)
     NM.run()
-    #NM.printStats()
