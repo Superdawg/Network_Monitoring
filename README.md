@@ -37,6 +37,8 @@ python3 ./check_script.py --retry-interval 5 --retry-count 1 --addresses 10.10.1
 If you then place this into a cron job (or some other scheduler), it will be able to automatially cycle the power on the power strip when there is an outage detected.
 
 # Equipment used
-~$52 USD - (Raspberry Pi 3b+)[https://www.amazon.com/CanaKit-Raspberry-Power-Supply-Listed/dp/B07BC6WH7V]
-~$30 USD - (IOT Relay Power Strip)[https://www.adafruit.com/product/2935]
-~$8 USD - (32GB Samsung EVO microSD card)[https://www.amazon.com/Samsung-MicroSDHC-Adapter-MB-ME32GA-AM/dp/B06XWN9Q99]
+~$52 USD - [Raspberry Pi 3b+](https://www.amazon.com/CanaKit-Raspberry-Power-Supply-Listed/dp/B07BC6WH7V)
+
+~$30 USD - [IOT Relay Power Strip](https://www.adafruit.com/product/2935)
+
+~$8 USD - [32GB Samsung EVO microSD card](https://www.amazon.com/Samsung-MicroSDHC-Adapter-MB-ME32GA-AM/dp/B06XWN9Q99)
