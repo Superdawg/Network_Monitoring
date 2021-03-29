@@ -107,14 +107,11 @@ class NetworkMonitor(object):
                 self.actOnFailure()
 
     def storeAddresses(self, addresses):
-        if addresses is None:
-            self.addressList = { '1.1.1.1': {},
-                                 '4.2.2.2': {},
-                                 '8.8.8.8': {} }
-        else:
-            self.addressList = {}
-            for address in addresses:
-                self.addressList[address] = {}
+        # If the addresses weren't provided in the first place, then use these
+        # addresses as the default set.
+        self.addressList = {}
+        for address in addresses:
+            self.addressList[address] = {}
 
     def processResults(self):
         """
