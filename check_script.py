@@ -89,6 +89,11 @@ class NetworkMonitor(object):
         can move forward with performing the pre-determined action to resolve.
         """
         self.log.error("We FAILED BAD, we need to DO SOMETHING about it")
+        self.log.info("Running %s" % self.failScript)
+        subprocess.call(self.failScript, shell=True)
+
+        # Always exit with a failure since ... we failed?
+        sys.exit(1)
 
     def run(self):
         # Continue to run ping tests until we determine that we're not
@@ -153,3 +158,4 @@ class NetworkMonitor(object):
 if __name__ == "__main__":
     NM = NetworkMonitor(sys.argv)
     NM.run()
+    sys.exit(0)
