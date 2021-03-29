@@ -57,10 +57,12 @@ class NetworkMonitor(object):
         parser.add_argument("--retry-interval",
                             dest="retry_interval",
                             default=30,
+                            type=int,
                             help="The time to wait in between retries")
         parser.add_argument("--retry-count",
                             dest="retry_count",
                             default=2,
+                            type=int,
                             help="The number of times to re-check before considering a failure")
         parser.add_argument("--exec-on-fail",
                             dest="fail_script",
