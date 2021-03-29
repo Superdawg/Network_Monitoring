@@ -3,9 +3,9 @@ This suite (well right now it's just a single script) is intended to be used on 
 
 If the internet is sufficiently deemed to be "down" (for now, >50% packet loss to >50% of targets) then the `check_script.py` script will invoke another utility/script to manipulate the power outlet and effectively "reboot" the modem.
 
-The default ping targets are `1.1.1.1`, `4.2.2.2`, and `8.8.8.8`.  This can be specified differently using the --addresses argument.
-The default number of retries before considering things to be "down" is 2.
-The default time between retries is set to 5 seconds (for development purposes), but should be set to something more like 15 minutes so that we don't end up rebooting the modem too frequently by being too sensitive.
+The default ping targets are `1.1.1.1`, `4.2.2.2`, and `8.8.8.8`.  This can be specified differently using the **--addresses** argument.
+The default number of retries before considering things to be **down** is *2*.
+The default time between retries is set to *5* seconds (**for development purposes**), but should be set to something more like **15 minutes** so that we don't end up rebooting the modem too frequently by being too sensitive.
 
 The script is intended to be invoked via cron (or some other scheduler) every 30-60 minutes for maximum effect.
 
