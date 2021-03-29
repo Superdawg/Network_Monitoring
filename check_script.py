@@ -7,7 +7,6 @@
 #                 [ --exec-on-fail /path/to/script ]
 
 import argparse
-
 import logging
 import os
 import pingparsing
