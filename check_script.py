@@ -150,9 +150,9 @@ class NetworkMonitor(object):
         # Determine whether the number of failed destionations is more than 50%
         # of our total destinations.  If so, then sleep for the retry Interval
         # so that we can loop around when we finish.
-        failedRate = len(self.failedPing) / self.addressList
+        failedRate = len(self.failedPing) / len(self.addressList)
         if failedRate > 0.5:
-            self.log.warn("Failed rate exceeds 50% Setting Retry in %s seconds" % self.retryInterval)
+            self.log.warning("Failed rate exceeds 50%% Setting Retry in %s seconds" % self.retryInterval)
             time.sleep(self.retryInterval)
 
 if __name__ == "__main__":
