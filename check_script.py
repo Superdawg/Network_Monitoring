@@ -6,12 +6,13 @@
 #                 [ --retry-count int ]
 #                 [ --exec-on-fail /path/to/script ]
 
-from argparse import *
+import argparse
 
 import logging
 import os
 import pingparsing
 import subprocess
+import sys
 
 class Logger(object):
     def __init__(self, name, filename=None):
@@ -38,16 +39,46 @@ class Logger(object):
         return logger
 
 class NetworkMonitor(object):
-    def __init__(self, retryInterval=30, retryCount=2, addresses=None):
+    def __init__(self, arguments):
         self.log = Logger(name = "NetworkMonitor").getLogger()
         self.ping_parse = pingparsing.PingParsing()
+        self.parseArgs(arguments)
 
         self.failedPing = []
         self.keepTesting = 1
-        self.retryInterval = retryInterval
-        self.retryCount = retryCount
 
-        self.storeAddresses(addresses)
+        self.storeAddresses(self.addresses)
+
+    def parseArgs(self, arguments):
+        parser = argparse.ArgumentParser(
+                description=("Ping a number of hosts to determine whether "
+                    "internet is functional and react accordingly"))
+        parser.add_argument("--retry-interval",
+                            dest="retry_interval",
+                            default=30,
+                            help="The time to wait in between retries")
+        parser.add_argument("--retry-count",
+                            dest="retry_count",
+                            default=2,
+                            help="The number of times to re-check before considering a failure")
+        parser.add_argument("--exec-on-fail",
+                            dest="fail_script",
+                            default=None,
+                            help="The command to invoke when there is a confirmed failure")
+        parser.add_argument('--addresses',
+                            action='store',
+                            dest='addresses',
+                            type=str,
+                            nargs='+',
+                            default=['1.1.1.1', '4.2.2.2', '8.8.8.8'],
+                            help="The list of addresses to test (example: --addresses 1.1.1.1 4.2.2.2")
+        args = parser.parse_args()
+
+        #TODO: Add some error checking to make sure the arguments are real.
+        self.retryInterval = args.retry_interval
+        self.retryCount = args.retry_count
+        self.failScript = args.fail_script
+        self.addresses = args.addresses
 
     def actOnFailure(self):
         """
@@ -120,13 +151,5 @@ class NetworkMonitor(object):
             time.sleep(self.retryInterval)
 
 if __name__ == "__main__":
-    addresses = [ '4.2.2.2',
-                  '8.8.8.8',
-                  '1.1.1.1' ]
-    retryInterval = 30
-    retryCount = 2
-
-    NM = NetworkMonitor(retryInterval = retryInterval,
-                        retryCount = retryCount,
-                        addresses = addresses)
+    NM = NetworkMonitor(sys.argv)
     NM.run()
