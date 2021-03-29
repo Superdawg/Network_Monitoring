@@ -13,6 +13,7 @@ import os
 import pingparsing
 import subprocess
 import sys
+import time
 
 class Logger(object):
     def __init__(self, name, filename=None):
