@@ -100,19 +100,26 @@ class NetworkMonitor(object):
         # experiencing an outage
         loop = 0
         while self.keepTesting:
-            for address in self.addressList:
-                self.log.info("Checking Address '%s'" % address)
-                ping_transmitter = pingparsing.PingTransmitter()
-                ping_transmitter.destination = address
-                ping_transmitter.count = 10
-                ping_results = ping_transmitter.ping()
-
-                self.addressList[address]['Stats'] = self.ping_parse.parse(ping_results).as_dict()
-
-            self.processResults()
-
+            self.log.debug("Loop: %i, retry count max: %i" % (loop, self.retryCount))
             if loop > self.retryCount:
+                self.log.debug("Loops have exceeded retries.  We need to ACT NOW BEFORE IT'S TOO LATE!")
                 self.actOnFailure()
+                self.keepTesting = 0
+            else:
+                for address in self.addressList:
+                    self.log.info("Checking Address '%s'" % address)
+                    ping_transmitter = pingparsing.PingTransmitter()
+                    ping_transmitter.destination = address
+                    ping_transmitter.count = 10
+                    ping_results = ping_transmitter.ping()
+
+                    self.addressList[address]['Stats'] = self.ping_parse.parse(ping_results).as_dict()
+
+                loop += 1
+
+                self.processResults()
+                self.sleepIfFailed()
+
 
     def storeAddresses(self, addresses):
         # If the addresses weren't provided in the first place, then use these
@@ -130,7 +137,6 @@ class NetworkMonitor(object):
         for address in self.addressList:
             if self.addressList[address]['Stats']['packet_loss_rate'] > 0.5:
                 self.failedPing.append(address)
-        self.sleepIfFailed()
 
     def printStats(self):
             import pprint
