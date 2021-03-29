@@ -1,7 +1,7 @@
 # Network_Monitoring
 This suite (well right now it's just a single script) is intended to be used on a Raspberry Pi controlling a power outlet that powers a modem.  It will confirm whether internet access is available and then act accordingly.
 
-If the internet is sufficiently deemed to be "down" (for now, >50% packet loss to >50% of targets) then the script will invoke another script to manipulate the power outlet and effectively "reboot" the modem.
+If the internet is sufficiently deemed to be "down" (for now, >50% packet loss to >50% of targets) then the `check_script.py` script will invoke another utility/script to manipulate the power outlet and effectively "reboot" the modem.
 
 The default ping targets are `1.1.1.1`, `4.2.2.2`, and `8.8.8.8`.  This can be specified differently using the --addresses argument.
 The default number of retries before considering things to be "down" is 2.
