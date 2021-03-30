@@ -182,9 +182,14 @@ class NetworkMonitor(object):
         # of our total destinations.  If so, then sleep for the retry Interval
         # so that we can loop around when we finish.
         failedRate = len(self.failedPing) / len(self.addressList)
-        if failedRate > 0.5:
-            self.log.warning("Failed rate exceeds 50%% Setting Retry in %s seconds" % self.retryInterval)
+        if failedRate >= 0.5:
+            self.log.warning("Failed host rate (%s) matches >=50%%. Retrying in %s seconds" %
+                            (failedRate, self.retryInterval))
             time.sleep(self.retryInterval)
+        else:
+            # Clear our Keep Testing flag since we didn't notice more than 50%
+            # of the hosts as being unreachable.
+            self.keepTesting = 0
 
 if __name__ == "__main__":
     NM = NetworkMonitor(sys.argv)
