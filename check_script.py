@@ -44,7 +44,6 @@ class NetworkMonitor(object):
         self.ping_parse = pingparsing.PingParsing()
         self.parseArgs(arguments)
 
-        self.failedPing = []
         self.keepTesting = 1
 
         self.numPings = 10
@@ -102,6 +101,10 @@ class NetworkMonitor(object):
         loop = 0
         while self.keepTesting:
             self.log.debug("Loop: %i, retry count max: %i" % (loop, self.retryCount))
+            # (re)set the faildPing list on each loop since we don't want to
+            # keep adding the same hosts every time if they are down.
+            self.failedPing = []
+
             if loop > self.retryCount:
                 self.log.debug("Loops have exceeded retries.  We need to ACT NOW BEFORE IT'S TOO LATE!")
                 self.actOnFailure()
