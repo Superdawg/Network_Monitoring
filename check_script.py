@@ -47,6 +47,8 @@ class NetworkMonitor(object):
         self.failedPing = []
         self.keepTesting = 1
 
+        self.numPings = 10
+
         self.storeAddresses(self.addresses)
 
     def parseArgs(self, arguments):
@@ -109,7 +111,8 @@ class NetworkMonitor(object):
                     self.log.info("Checking Address '%s'" % address)
                     ping_transmitter = pingparsing.PingTransmitter()
                     ping_transmitter.destination = address
-                    ping_transmitter.count = 10
+                    ping_transmitter.count = self.numPings
+
                     ping_results = ping_transmitter.ping()
 
                     self.addressList[address]['Stats'] = self.ping_parse.parse(ping_results).as_dict()
