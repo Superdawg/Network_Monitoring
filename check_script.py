@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 # Synopsis:
 # ./check_script.py --addresses a.b.c.d[,...]
