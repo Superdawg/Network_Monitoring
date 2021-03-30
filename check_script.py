@@ -124,8 +124,14 @@ class NetworkMonitor(object):
 
                 loop += 1
 
+                # Account for the results from each of the ping tests.
                 self.processResults()
-                self.sleepIfFailed()
+
+                # I don't like this...  But for now... After we've incremented
+                # the loop counter, if we're at the limit, don't bother
+                # sleeping.
+                if loop <= self.retryCount:
+                    self.sleepIfFailed()
 
 
     def storeAddresses(self, addresses):
