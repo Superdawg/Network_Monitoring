@@ -1,7 +1,7 @@
 # Network Monitoring and Recovery
 This suite is intended to be used on a Raspberry Pi controlling a power outlet that powers a modem.  It will confirm whether internet access is available and then act accordingly.
 
-The python should be invoked via cron (or some other scheduler) every 30-60 minutes to reduce on too many reboots unnecessarily.  Since the internet connection could be down for other reasons, it should be taken into consideration that this suite will reboot the modem repeatedly without regard.  If a device is repeatedly cycled, it could cause wear and tear, so it's best to reasonably limit the number of cycles (but it's up to the owner to decide!).
+The python script should be invoked via cron (or some other scheduler) every 30-60 minutes to reduce on too many reboots unnecessarily.  Since the internet connection could be down for other reasons, it should be taken into consideration that this suite will reboot the modem repeatedly without regard.  If a device is repeatedly cycled, it could cause wear and tear, so it's best to reasonably limit the number of cycles (but it's up to the owner to decide!).
 
 If the internet is sufficiently deemed to be "down" (for now, >50% packet loss to >50% of targets; maybe this can be configurable later) then the `check_script.py`script will invoke gpio_control (or something else that you want) to manipulate the power outlet and effectively "reboot" the modem.
 
