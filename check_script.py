@@ -89,6 +89,7 @@ class NetworkMonitor(object):
         can move forward with performing the pre-determined action to resolve.
         """
         self.log.error("We FAILED BAD, we need to DO SOMETHING about it")
+        self.printStats()
         self.log.info("Running %s" % self.failScript)
         subprocess.call(self.failScript, shell=True)
 
@@ -100,13 +101,14 @@ class NetworkMonitor(object):
         # experiencing an outage
         loop = 0
         while self.keepTesting:
-            self.log.debug("Loop: %i, retry count max: %i" % (loop, self.retryCount))
             # (re)set the faildPing list on each loop since we don't want to
             # keep adding the same hosts every time if they are down.
             self.failedPing = []
 
+            self.log.info("Loop: %i, retry count max: %i" % (loop,
+                                                             self.retryCount))
             if loop > self.retryCount:
-                self.log.debug("Loops have exceeded retries.  We need to ACT NOW BEFORE IT'S TOO LATE!")
+                self.log.warning("Maximum Retry count exceeded.  Performing action.")
                 self.actOnFailure()
                 self.keepTesting = 0
             else:
@@ -127,8 +129,10 @@ class NetworkMonitor(object):
 
 
     def storeAddresses(self, addresses):
-        # If the addresses weren't provided in the first place, then use these
-        # addresses as the default set.
+        """
+        Take the addresses from their list format and place them in the
+        dictionary that will eventually hold the statistics.
+        """
         self.addressList = {}
         for address in addresses:
             self.addressList[address] = {}
@@ -140,6 +144,10 @@ class NetworkMonitor(object):
         later.
         """
         for address in self.addressList:
+            self.log.info("%s - Sent/Received: %s/%s" %
+                         (address,
+                          self.addressList[address]['Stats']['packet_transmit'],
+                          self.addressList[address]['Stats']['packet_receive']))
             if self.addressList[address]['Stats']['packet_loss_rate'] > 0.5:
                 self.failedPing.append(address)
 
@@ -153,7 +161,7 @@ class NetworkMonitor(object):
         more than half of them for more than half of their packets, then we
         should consider this a failure and sleep for the set period.
         """
-        # We passed the test.  We're all good.
+        # If we didn't have any failures added to the list, then we're done.
         if len(self.failedPing) == 0:
             self.keepTesting = 0
             return
