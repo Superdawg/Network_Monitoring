@@ -154,7 +154,13 @@ class NetworkMonitor(object):
                          (address,
                           self.addressList[address]['Stats']['packet_transmit'],
                           self.addressList[address]['Stats']['packet_receive']))
-            if self.addressList[address]['Stats']['packet_loss_rate'] > 0.5:
+
+            # If any particular host has 50% or more packet loss, then they
+            # should be added to the list of failed pings.
+            if self.addressList[address]['Stats']['packet_loss_rate'] >= 50:
+                self.log.warning("Packet loss for %s: %s" %
+                                 (address,
+                                  self.addressList[address]['Stats']['packet_loss_rate']))
                 self.failedPing.append(address)
 
     def printStats(self):
