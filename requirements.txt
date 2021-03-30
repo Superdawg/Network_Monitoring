@@ -1,0 +1,2 @@
+# This is the list of requirements to run this software.
+pingparsing==1.3.0
