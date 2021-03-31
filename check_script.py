@@ -88,7 +88,6 @@ class NetworkMonitor(object):
         Now that we have determined that we have sufficiently failed, then we
         can move forward with performing the pre-determined action to resolve.
         """
-        self.log.error("We FAILED BAD, we need to DO SOMETHING about it")
         self.printStats()
         self.log.info("Running %s" % self.failScript)
         subprocess.call(self.failScript, shell=True)
