@@ -54,28 +54,32 @@ class NetworkMonitor(object):
     def parseArgs(self, arguments):
         parser = argparse.ArgumentParser(
                 description=("Ping a number of hosts to determine whether "
-                    "internet is functional and react accordingly"))
-        parser.add_argument("--retry-interval",
-                            dest="retry_interval",
-                            default=30,
-                            type=int,
-                            help="The time to wait in between retries")
-        parser.add_argument("--retry-count",
-                            dest="retry_count",
-                            default=2,
-                            type=int,
-                            help="The number of times to re-check before considering a failure")
-        parser.add_argument("--exec-on-fail",
-                            dest="fail_script",
-                            default=None,
-                            help="The command to invoke when there is a confirmed failure")
+                             "internet is functional and react accordingly"))
         parser.add_argument('--addresses',
                             action='store',
                             dest='addresses',
                             type=str,
                             nargs='+',
                             default=['1.1.1.1', '4.2.2.2', '8.8.8.8'],
-                            help="The list of addresses to test (example: --addresses 1.1.1.1 4.2.2.2")
+                            help="The list of addresses to test")
+        parser.add_argument("--exec-on-fail",
+                            dest="fail_script",
+                            default=None,
+                            help=("The command to invoke when there is a "
+                                  "confirmed failure"))
+        parser.add_argument("--retry-count",
+                            dest="retry_count",
+                            default=2,
+                            type=int,
+                            help=("The number of times to re-check before "
+                                  "considering a failure.  Must be a positive "
+                                  "integer."))
+        parser.add_argument("--retry-interval",
+                            dest="retry_interval",
+                            default=30,
+                            type=int,
+                            help=("The time to wait in between retries.  Must "
+                                  "be a positive integer."))
         args = parser.parse_args()
 
         if ((args.retry_interval < 0) or (args.retry_count < 0)):
@@ -140,7 +144,8 @@ class NetworkMonitor(object):
             self.log.info("Loop: %i, retry count max: %i" % (loop,
                                                              self.retryCount))
             if loop > self.retryCount:
-                self.log.warning("Maximum Retry count exceeded.  Performing action.")
+                self.log.warning(("Maximum Retry count exceeded.  Performing "
+                                 "action."))
                 self.actOnFailure()
                 self.keepTesting = 0
             else:
