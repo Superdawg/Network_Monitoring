@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
         // Sleep for the requested time.
         fprintf(stdout, "Sleeping for %d seconds\n", delay);
-        //time_sleep(delay);
+        time_sleep(delay);
 
         // Turn the supplied pin off.
         fprintf(stdout, "Turning pin %d off\n", pin);
