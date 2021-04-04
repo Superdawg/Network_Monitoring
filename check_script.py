@@ -10,6 +10,7 @@ import argparse
 import logging
 import os
 import pingparsing
+import socket
 import subprocess
 import sys
 import time
@@ -77,11 +78,43 @@ class NetworkMonitor(object):
                             help="The list of addresses to test (example: --addresses 1.1.1.1 4.2.2.2")
         args = parser.parse_args()
 
-        #TODO: Add some error checking to make sure the arguments are real.
+        if ((args.retry_interval < 0) or (args.retry_count < 0)):
+            self.log.error(("Invalid retry interval (%i) or retry count(%i) "
+                            "requested.") %
+                           (args.retry_interval, args.retry_count))
+            fail = 1
+        if not self.verifyAddressFormat(args.addresses):
+            self.log.error("Invalid IP address specified in list (%s)" %
+                           ', '.join(args.addresses))
+            fail = 1
+        #XXX: There is no validation against the fail_script since it can be
+        #     anything from another script, to a full on command (like what is
+        #     specified in the README.md for this project)
+
         self.retryInterval = args.retry_interval
         self.retryCount = args.retry_count
         self.failScript = args.fail_script
         self.addresses = args.addresses
+
+        if fail:
+            parser.print_usage()
+            sys.exit(1)
+
+    def verifyAddressFormat(self, addresses):
+        """
+        Loop through the provided IP addresses and make sure they are all valid
+        IP addresses
+        """
+        for ip in addresses:
+            try:
+                socket.inet_aton(ip)
+            #XXX: Generic exception catch.  Maybe it'll fail on something else,
+            #     but we'll be trusting for now.
+            except Exception:
+                self.log.error("IP address (%s) is invalid" % ip)
+                return False
+
+        return True
 
     def actOnFailure(self):
         """
