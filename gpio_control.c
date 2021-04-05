@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
         // Turn the supplied pin on.
         fprintf(stdout, "Turning pin %d on\n", pin);
-        //gpioWrite(pin, 1);
+        gpioWrite(pin, 1);
 
         // Sleep for the requested time.
         fprintf(stdout, "Sleeping for %d seconds\n", delay);
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 
         // Turn the supplied pin off.
         fprintf(stdout, "Turning pin %d off\n", pin);
-        //gpioWrite(pin, 0);
+        gpioWrite(pin, 0);
 
         return 0;
 }
