@@ -38,7 +38,7 @@ void printUsage(char arg[255])
         fprintf(stderr, "Usage: %s [-d NUM] [-p NUM]\n", arg);
         fprintf(stderr, "\t-d\t Time (in seconds) to keep the pin activated\n");
         fprintf(stderr, "\t-p\t The pin to activate (MUST BE one of %s)\n", csv_pins);
-        exit(0);
+        exit(1);
 }
 
 /**
@@ -51,18 +51,20 @@ void printUsage(char arg[255])
  **/
 int validatePin(int pin, char arg[255])
 {
+        // Check the specified pin against the list and return if it's been
+        // found.
         for (int i = 0; i < sizeof(gpio); i++)
         {
-          if (gpio[i] == pin)
-          {
-            return pin;
-          }
+                if (gpio[i] == pin)
+                {
+                        return pin;
+                }
         }
 
         char csv_pins[1024];
         print_csv_pins(csv_pins);
         fprintf(stderr, "Pin %i is not acceptable.  Must be one of %s\n", pin, csv_pins);
-        printUsage(arg);
+        exit(1);
 
         return pin;
 }
