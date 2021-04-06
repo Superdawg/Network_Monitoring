@@ -40,10 +40,10 @@ class Logger(object):
         return logger
 
 class NetworkMonitor(object):
-    def __init__(self, arguments):
+    def __init__(self):
         self.log = Logger(name = "NetworkMonitor").getLogger()
         self.ping_parse = pingparsing.PingParsing()
-        self.parseArgs(arguments)
+        self.parseArgs()
 
         self.keepTesting = 1
 
@@ -51,7 +51,7 @@ class NetworkMonitor(object):
 
         self.storeAddresses(self.addresses)
 
-    def parseArgs(self, arguments):
+    def parseArgs(self):
         parser = argparse.ArgumentParser(
                 description=("Ping a number of hosts to determine whether "
                              "internet is functional and react accordingly"))
@@ -230,6 +230,6 @@ class NetworkMonitor(object):
             self.keepTesting = 0
 
 if __name__ == "__main__":
-    NM = NetworkMonitor(sys.argv)
+    NM = NetworkMonitor()
     NM.run()
     sys.exit(0)
