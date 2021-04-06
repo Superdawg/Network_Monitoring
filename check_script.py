@@ -82,6 +82,7 @@ class NetworkMonitor(object):
                                   "be a positive integer."))
         args = parser.parse_args()
 
+        fail = 0
         if ((args.retry_interval < 0) or (args.retry_count < 0)):
             self.log.error(("Invalid retry interval (%i) or retry count(%i) "
                             "requested.") %
