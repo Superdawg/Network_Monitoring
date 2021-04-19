@@ -10,6 +10,7 @@ import argparse
 import logging
 import os
 import pingparsing
+import pprint
 import socket
 import subprocess
 import sys
@@ -205,7 +206,6 @@ class NetworkMonitor(object):
                 self.failedPing.append(address)
 
     def printStats(self):
-            import pprint
             pprint.pprint(self.addressList)
 
     def sleepIfFailed(self):
