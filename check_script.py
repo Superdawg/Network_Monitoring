@@ -127,8 +127,10 @@ class NetworkMonitor(object):
         can move forward with performing the pre-determined action to resolve.
         """
         self.printStats()
-        self.log.info("Running %s" % self.failScript)
-        subprocess.call(self.failScript, shell=True)
+
+        if self.failScript is not None:
+            self.log.info("Running %s" % self.failScript)
+            subprocess.call(self.failScript, shell=True)
 
         # Always exit with a failure since ... we failed?
         sys.exit(1)
