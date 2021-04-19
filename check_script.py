@@ -7,10 +7,12 @@
 #                 [ --exec-on-fail /path/to/script ]
 
 import argparse
+from email.message import EmailMessage
 import logging
 import os
 import pingparsing
 import pprint
+import smtplib
 import socket
 import subprocess
 import sys
@@ -45,6 +47,11 @@ class NetworkMonitor(object):
         self.log = Logger(name = "NetworkMonitor").getLogger()
         self.ping_parse = pingparsing.PingParsing()
         self.parseArgs()
+        try:
+            self.hostname = socket.getfqdn()
+        except Exception as error:
+            self.log.error("Unable to detect proper hostname")
+            sys.exit(1)
 
         self.keepTesting = 1
 
@@ -68,6 +75,20 @@ class NetworkMonitor(object):
                             default=None,
                             help=("The command to invoke when there is a "
                                   "confirmed failure"))
+        parser.add_argument('--email-recipients',
+                            action='store',
+                            dest='emails',
+                            type=str,
+                            nargs='+',
+                            default=None,
+                            help=("The list of email addresses to notify when "
+                                  "there is a confirmed failure"))
+        parser.add_argument('--email-relay',
+                            action='store',
+                            dest='email_relay',
+                            type=str,
+                            default='localhost',
+                            help=("The SMTP/MTA to use for sending the email"))
         parser.add_argument("--retry-count",
                             dest="retry_count",
                             default=2,
@@ -101,6 +122,8 @@ class NetworkMonitor(object):
         self.retryCount = args.retry_count
         self.failScript = args.fail_script
         self.addresses = args.addresses
+        self.emails = args.emails
+        self.relay = args.email_relay
 
         if fail:
             parser.print_usage()
@@ -133,8 +156,40 @@ class NetworkMonitor(object):
             self.log.info("Running %s" % self.failScript)
             subprocess.call(self.failScript, shell=True)
 
+        # Send out emails to indicate that we acted.
+        self.notifyEmails()
+
         # Always exit with a failure since ... we failed?
         sys.exit(1)
+
+    def notifyEmails(self):
+        """
+        Send email notice if specified that we have acted on a failure
+        """
+        message = EmailMessage()
+        message.set_content(("The Network Monitoring Script has taken action "
+                             "to reboot the modem.  Please review the "
+                             "statistics to verify the results."
+                             "\n\n"
+                             "Stats: %s" % pprint.pformat(self.addressList)))
+
+        # Keeping a timestamp in the subject is important since this message
+        # may be getting delivered significantly later than the actual action.
+        # If this event triggers, that means internet is considered to be down.
+        # This message won't be delivered until internet connectivity has been
+        # restored.
+        #XXX: If the connection is down for a long time, then there could be a
+        #     large number of these messages queued up.  This should probably
+        #     be taken into account somehow.
+        message['Subject'] = ("[NETWORK FAILURE] %s - %s" %
+            (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
+        message['From'] = ("network_check@%s" % self.hostname)
+        message['To'] = ', '.join(self.emails)
+
+        # Now that we're finished assembilng the message, let's send it along.
+        smtp = smtplib.SMTP(self.relay)
+        smtp.send_message(message)
+        smtp.quit()
 
     def run(self):
         # Continue to run ping tests until we determine that we're not
