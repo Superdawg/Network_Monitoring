@@ -15,8 +15,8 @@ install: $(PROGS)
 	install -m 0644 -o root -g root network_check.timer /usr/lib/systemd/system/network_check.timer
 	install -m 0644 -o root -g root network_check.service /usr/lib/systemd/system/network_check.service
 	@echo Enabling and starting the network_check timer.
-	systemctl enable power_check.timer
-	systemctl start power_check.timer
+	systemctl enable network_check.timer
+	systemctl start network_check.timer
 
 clean:
 	rm -v $(PROGS)
