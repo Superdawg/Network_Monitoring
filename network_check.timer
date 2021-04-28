@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the status of the internet connection.
+
+[Timer]
+OnBootSec=0min
+OnCalendar=*:0/30
+Unit=network_check.service
+
+[Install]
+WantedBy=basic.target

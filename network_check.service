@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the status of the internet connection.
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/network_check --retry-interval 30 --retry-count 2 --addresses 75.75.75.75 8.8.8.8 1.1.1.1 --email-recipients user@email.com --exec-on-fail "/usr/sbin/gpio_control -d 30 -p 23"
+
+[Install]
+WantedBy=multi-user.target
