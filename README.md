@@ -17,24 +17,30 @@ To check 10.10.10.10 a maximum of **two** times with a **five** second sleep in 
 
 *Assume that 10.10.10.10 is an address that is not answering for this example*
 ```shell
-./check_script.py --addresses 10.10.10.10 \
-                  --retry-count 1 \
-                  --retry-interval 5 \
-                  --exec-on-fail "/home/pi/Network_Monitoring/gpio_control -d 15 -p 23"
+./network_check.py --addresses 10.10.10.10 \
+                   --retry-count 1 \
+                   --retry-interval 5 \
+                   --exec-on-fail "/home/pi/Network_Monitoring/gpio_control -d 15 -p 23"
 ```
 
 # Getting up and running on Raspbian Buster
-As of 2021-03-29, this is the procedure to get a freshly installed version of Raspbian Buster running.
+As of 2021-04-27, this is the procedure to get a freshly installed version of Raspbian Buster running.
 ```
 sudo apt-get install -y git libpigpio-dev python3-pip
-pip3 install pingparsing
+sudo pip3 install pingparsing
 git clone https://github.com/Superdawg/Network_Monitoring.git
 cd Network_Monitoring
 make
-python3 ./check_script.py --retry-interval 5 --retry-count 1 --addresses 10.10.10.10 --exec-on-fail "sudo /home/pi/Network_Monitoring//gpio_control -d 15 -p 23"
+<Update network_check.service parameters>
+sudo make install
+# Make sure the timers are active...
+sudo systemctl list-timers --all | grep network_check.service$
 ```
 
 If you then place this into a cron job (or some other scheduler), it will be able to automatially cycle the power on the power strip when there is an outage detected.
+
+# KNOWN ISSUES
+- If you run this on something other than a debian-like system (i.e. CentOS/RHEL, etc.), then you will need to change the group from 'nogroup' to something else like 'nobody'.
 
 # Equipment used
 ~$52 USD - [Raspberry Pi 3b+](https://www.amazon.com/CanaKit-Raspberry-Power-Supply-Listed/dp/B07BC6WH7V)
