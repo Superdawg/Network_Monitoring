@@ -87,7 +87,18 @@ When adding a new argument to `network_check.py` that belongs in the service:
 
 ## Committing changes
 
-- Always run `make lint` and resolve all warnings **before** committing.
+Before every commit, verify all of the following are complete:
+
+1. `make lint` passes with no warnings.
+2. If behaviour or arguments changed: `README.md` prose description is updated
+   to reflect how the feature actually works (not just that a new flag exists).
+3. If arguments were added or removed: the **Default values** table in
+   `README.md`, the `parseArgs()` defaults, and the Makefile variable defaults
+   all agree.
+4. If arguments were added or removed: the synopsis comment at the top of
+   `network_check.py` is updated.
+
+General rules:
 - Commit all modified files at the end of every change session — do not
   leave work uncommitted.
 - Stage specific files by name; avoid `git add -A` or `git add .`.
