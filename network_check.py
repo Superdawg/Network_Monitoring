@@ -58,7 +58,7 @@ class NetworkMonitor(object):
         self.parseArgs()
         try:
             self.hostname = socket.getfqdn()
-        except Exception:
+        except OSError:
             self.log.error("Unable to detect proper hostname")
             sys.exit(1)
 
