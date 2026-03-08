@@ -1,21 +1,29 @@
 #!/usr/bin/python3
 #
 # Synopsis:
-# ./check_script.py --addresses a.b.c.d[,...]
-#                 [ --retry-interval int ]
-#                 [ --retry-count int ]
-#                 [ --exec-on-fail /path/to/script ]
+# ./network_check.py --addresses a.b.c.d[,...]
+#                  [ --retry-interval int ]
+#                  [ --retry-count int ]
+#                  [ --exec-on-fail /path/to/script ]
+#                  [ --email-recipients addr [addr ...] ]
+#                  [ --email-relay host ]
+#                  [ --notify-state-file /path/to/state ]
+#                  [ --notify-cooldown int ]
+#                  [ --reboot-cooldown int ]
 
 import argparse
 from email.message import EmailMessage
+import json
 import logging
-import pingparsing
+import os
 import pprint
 import smtplib
 import socket
 import subprocess
 import sys
 import time
+
+import pingparsing
 
 
 class Logger(object):
@@ -103,6 +111,22 @@ class NetworkMonitor(object):
                             type=int,
                             help=("The time to wait in between retries.  Must "
                                   "be a positive integer."))
+        parser.add_argument("--notify-state-file",
+                            dest="notify_state_file",
+                            default="/var/run/network_check.state",
+                            help=("Path to the file used to track outage state "
+                                  "across invocations"))
+        parser.add_argument("--notify-cooldown",
+                            dest="notify_cooldown",
+                            default=3600,
+                            type=int,
+                            help=("Minimum seconds between failure notification "
+                                  "emails"))
+        parser.add_argument("--reboot-cooldown",
+                            dest="reboot_cooldown",
+                            default=7200,
+                            type=int,
+                            help=("Minimum seconds between modem reboots"))
         args = parser.parse_args()
 
         fail = 0
@@ -124,6 +148,9 @@ class NetworkMonitor(object):
         self.addresses = args.addresses
         self.emails = args.emails
         self.relay = args.email_relay
+        self.notifyStateFile = args.notify_state_file
+        self.notifyCooldown = args.notify_cooldown
+        self.rebootCooldown = args.reboot_cooldown
 
         if fail:
             parser.print_usage()
@@ -147,23 +174,48 @@ class NetworkMonitor(object):
         """
         Now that we have determined that we have sufficiently failed, then we
         can move forward with performing the pre-determined action to resolve.
+        Reboots and notifications are each rate-limited by their respective
+        cooldowns, with state persisted to disk across invocations.
         """
         self.printStats()
+        now = time.time()
+        state = self.loadState()
 
+        # Rate-limit reboots: only reboot if no prior reboot has occurred
+        # within the reboot cooldown window.
         if self.failScript is not None:
-            self.log.info("Running %s" % self.failScript)
-            subprocess.call(self.failScript, shell=True)
+            last_reboot = state['last_reboot_time']
+            if last_reboot is None or (now - last_reboot) >= self.rebootCooldown:
+                self.log.info("Running %s" % self.failScript)
+                subprocess.call(self.failScript, shell=True)
+                state['last_reboot_time'] = now
+                state['reboot_count'] += 1
+            else:
+                remaining = self.rebootCooldown - (now - last_reboot)
+                self.log.warning("Reboot cooldown active. Next reboot "
+                                 "eligible in %.0f seconds." % remaining)
 
-        # Send out emails to indicate that we acted.
-        self.notifyEmails()
+        # Rate-limit failure notifications.
+        last_notify = state['last_notify_time']
+        if last_notify is None or (now - last_notify) >= self.notifyCooldown:
+            self.notifyEmails()
+            state['last_notify_time'] = now
+        else:
+            remaining = self.notifyCooldown - (now - last_notify)
+            self.log.info("Notification cooldown active. Next notification "
+                          "eligible in %.0f seconds." % remaining)
 
-        # Always exit with a failure since ... we failed?
+        self.saveState(state)
         sys.exit(1)
 
     def notifyEmails(self):
         """
-        Send email notice if specified that we have acted on a failure
+        Send email notice if specified that we have acted on a failure.
+        Notification frequency is controlled by the caller via notifyCooldown.
         """
+        if self.emails is None:
+            return
+
         message = EmailMessage()
         message.set_content(("The Network Monitoring Script has taken action "
                              "to reboot the modem.  Please review the "
@@ -176,15 +228,82 @@ class NetworkMonitor(object):
         # If this event triggers, that means internet is considered to be down.
         # This message won't be delivered until internet connectivity has been
         # restored.
-        # TODO: If the connection is down for a long time, then there could be a
-        #     large number of these messages queued up.  This should probably
-        #     be taken into account somehow.
         message['Subject'] = ("[NETWORK FAILURE] %s - %s" %
                               (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
         message['From'] = ("network_check@%s" % self.hostname)
         message['To'] = ', '.join(self.emails)
 
-        # Now that we're finished assembilng the message, let's send it along.
+        # Now that we're finished assembling the message, let's send it along.
+        smtp = smtplib.SMTP(self.relay)
+        smtp.send_message(message)
+        smtp.quit()
+
+    def loadState(self):
+        """
+        Load outage state from the state file.  If the file does not exist,
+        a fresh state is returned with first_failure_time set to now.  If the
+        file is unreadable or malformed, a warning is logged and a fresh state
+        is returned.
+        """
+        if os.path.exists(self.notifyStateFile):
+            try:
+                with open(self.notifyStateFile, 'r') as f:
+                    return json.load(f)
+            except (OSError, ValueError):
+                self.log.warning("Could not read state file %s; starting "
+                                 "fresh." % self.notifyStateFile)
+        return {
+            'first_failure_time': time.time(),
+            'last_reboot_time': None,
+            'reboot_count': 0,
+            'last_notify_time': None,
+        }
+
+    def saveState(self, state):
+        """
+        Persist the outage state to disk.
+        """
+        try:
+            with open(self.notifyStateFile, 'w') as f:
+                json.dump(state, f)
+        except OSError as e:
+            self.log.error("Could not write state file %s: %s" %
+                           (self.notifyStateFile, e))
+
+    def clearState(self):
+        """
+        Remove the state file once internet connectivity has been restored.
+        """
+        if os.path.exists(self.notifyStateFile):
+            try:
+                os.remove(self.notifyStateFile)
+            except OSError as e:
+                self.log.error("Could not remove state file %s: %s" %
+                               (self.notifyStateFile, e))
+
+    def notifyRecovery(self, state):
+        """
+        Send an email indicating that internet connectivity has been restored,
+        including the outage duration and the number of reboots performed.
+        """
+        if self.emails is None:
+            return
+
+        elapsed = time.time() - state['first_failure_time']
+        hours, remainder = divmod(int(elapsed), 3600)
+        minutes = remainder // 60
+
+        message = EmailMessage()
+        message.set_content(
+            ("Internet connectivity has been restored on %s.\n\n"
+             "Outage duration:            %d hour(s) %d minute(s)\n"
+             "Modem reboots during outage: %d") %
+            (self.hostname, hours, minutes, state['reboot_count']))
+        message['Subject'] = ("[NETWORK RECOVERY] %s - %s" %
+                              (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
+        message['From'] = ("network_check@%s" % self.hostname)
+        message['To'] = ', '.join(self.emails)
+
         smtp = smtplib.SMTP(self.relay)
         smtp.send_message(message)
         smtp.quit()
@@ -227,6 +346,14 @@ class NetworkMonitor(object):
                 # Look at the results and sleep if there is any amount of
                 # failure.  Otherwise just return for the next loop.
                 self.sleepIfFailed()
+
+        # If a state file exists, internet has recovered from a prior outage.
+        # Send a recovery notification and clean up the state file.
+        if os.path.exists(self.notifyStateFile):
+            state = self.loadState()
+            self.log.info("Internet connectivity restored after outage.")
+            self.notifyRecovery(state)
+            self.clearState()
 
     def storeAddresses(self, addresses):
         """
