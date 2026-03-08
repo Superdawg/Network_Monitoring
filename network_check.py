@@ -17,6 +17,8 @@ Synopsis:
                    [ --notify-state-file /path/to/state ]
                    [ --notify-cooldown int ]
                    [ --reboot-cooldown int ]
+                   [ --traceroute-address a.b.c.d ]
+                   [ --reboot-hop-threshold int ]
 """
 
 import argparse
@@ -143,6 +145,21 @@ class NetworkMonitor:
                             default=7200,
                             type=int,
                             help="Minimum seconds between modem reboots")
+        parser.add_argument("--traceroute-address",
+                            dest="traceroute_address",
+                            default=None,
+                            help=("IPv4 address to traceroute to when pings fail, used to "
+                                  "determine whether the failure is close enough to the modem "
+                                  "to warrant a reboot.  If unset, a reboot is always attempted "
+                                  "on confirmed failure (original behaviour)."))
+        parser.add_argument("--reboot-hop-threshold",
+                            dest="reboot_hop_threshold",
+                            default=2,
+                            type=int,
+                            help=("Only reboot the modem if the first fully-unresponsive "
+                                  "traceroute hop is at or below this value.  A value of 2 "
+                                  "means the failure must be at the ISP's first router to "
+                                  "justify a reboot. (default: 2)"))
         args = parser.parse_args()
 
         fail = 0
@@ -152,6 +169,14 @@ class NetworkMonitor:
             fail = 1
         if not self.verify_address_format(args.addresses):
             self.log.error(f"Invalid IP address specified in list ({', '.join(args.addresses)})")
+            fail = 1
+        if args.traceroute_address is not None:
+            if not self.verify_address_format([args.traceroute_address]):
+                self.log.error(f"Invalid traceroute address: {args.traceroute_address}")
+                fail = 1
+        if args.reboot_hop_threshold < 1:
+            self.log.error(f"Invalid reboot hop threshold ({args.reboot_hop_threshold}); "
+                           f"must be >= 1.")
             fail = 1
         # No validation is performed on fail_script by design — it accepts
         # arbitrary commands, as documented in README.md.
@@ -165,6 +190,8 @@ class NetworkMonitor:
         self.notify_state_file = args.notify_state_file
         self.notify_cooldown = args.notify_cooldown
         self.reboot_cooldown = args.reboot_cooldown
+        self.traceroute_address = args.traceroute_address
+        self.reboot_hop_threshold = args.reboot_hop_threshold
 
         if fail:
             parser.print_usage()
@@ -198,21 +225,40 @@ class NetworkMonitor:
         # Rate-limit reboots.  On the first failure, start the cooldown clock
         # without rebooting so that a single blip never cycles the modem.
         # Subsequent failures reboot once the cooldown window has elapsed.
+        #
+        # When a traceroute address is configured, first check which hop is the
+        # first to go silent.  If the failure is beyond the reboot threshold it
+        # is upstream of the modem and a reboot won't help.  If the traceroute
+        # is inconclusive (error, timeout, or no silent hop found), fall back to
+        # the original behaviour and attempt a reboot.
         if self.fail_script is not None:
-            last_reboot = state['last_reboot_time']
-            if last_reboot is None:
-                self.log.warning(f"First failure detected. Reboot will trigger "
-                                 f"after cooldown ({self.reboot_cooldown:.0f} seconds).")
-                state['last_reboot_time'] = now
-            elif (now - last_reboot) >= self.reboot_cooldown:
-                self.log.info(f"Running {self.fail_script}")
-                subprocess.call(self.fail_script, shell=True)
-                state['last_reboot_time'] = now
-                state['reboot_count'] += 1
+            first_silent_hop = self.check_failure_hop()
+            if first_silent_hop is not None and first_silent_hop > self.reboot_hop_threshold:
+                self.log.warning(
+                    f"First unresponsive traceroute hop ({first_silent_hop}) exceeds "
+                    f"reboot threshold ({self.reboot_hop_threshold}). "
+                    f"Failure is upstream of the modem; skipping reboot.")
             else:
-                remaining = self.reboot_cooldown - (now - last_reboot)
-                self.log.warning(f"Reboot cooldown active. Next reboot "
-                                 f"eligible in {remaining:.0f} seconds.")
+                if first_silent_hop is None and self.traceroute_address is not None:
+                    self.log.warning("Traceroute inconclusive; defaulting to reboot behaviour.")
+                elif first_silent_hop is not None:
+                    self.log.warning(
+                        f"First unresponsive traceroute hop ({first_silent_hop}) is within "
+                        f"reboot threshold ({self.reboot_hop_threshold}). Proceeding with reboot.")
+                last_reboot = state['last_reboot_time']
+                if last_reboot is None:
+                    self.log.warning(f"First failure detected. Reboot will trigger "
+                                     f"after cooldown ({self.reboot_cooldown:.0f} seconds).")
+                    state['last_reboot_time'] = now
+                elif (now - last_reboot) >= self.reboot_cooldown:
+                    self.log.info(f"Running {self.fail_script}")
+                    subprocess.call(self.fail_script, shell=True)
+                    state['last_reboot_time'] = now
+                    state['reboot_count'] += 1
+                else:
+                    remaining = self.reboot_cooldown - (now - last_reboot)
+                    self.log.warning(f"Reboot cooldown active. Next reboot "
+                                     f"eligible in {remaining:.0f} seconds.")
 
         # Rate-limit failure notifications.
         last_notify = state['last_notify_time']
@@ -296,6 +342,45 @@ class NetworkMonitor:
                 os.remove(self.notify_state_file)
             except OSError as e:
                 self.log.error(f"Could not remove state file {self.notify_state_file}: {e}")
+
+    def check_failure_hop(self):
+        """
+        Run traceroute to the configured traceroute address and return the first
+        hop number where all probes are unresponsive.  Returns None if no
+        traceroute address is configured, the command fails, times out, or no
+        fully-silent hop is found within the hop limit (all inconclusive cases).
+        """
+        if self.traceroute_address is None:
+            return None
+        try:
+            result = subprocess.run(
+                ['traceroute', '-n', '-m', '10', self.traceroute_address],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,  # non-zero exit is expected when destination is unreachable
+            )
+            return self._parse_first_silent_hop(result.stdout)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            self.log.warning(f"traceroute to {self.traceroute_address} failed: {e}; "
+                             f"falling back to default reboot behaviour.")
+            return None
+
+    def _parse_first_silent_hop(self, output):
+        """
+        Parse traceroute stdout and return the hop number of the first hop where
+        every probe timed out (i.e. all tokens after the hop number are '*').
+        Returns None if no fully-silent hop is found.
+        """
+        for line in output.splitlines():
+            parts = line.split()
+            if not parts or not parts[0].isdigit():
+                continue
+            hop_num = int(parts[0])
+            responses = parts[1:]
+            if responses and all(r == '*' for r in responses):
+                return hop_num
+        return None
 
     def notify_recovery(self, state):
         """

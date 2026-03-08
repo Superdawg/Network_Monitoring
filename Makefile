@@ -19,14 +19,25 @@ GPIO_PIN          ?= 23
 GPIO_DELAY        ?= 30
 EMAIL_RECIPIENTS  ?=
 NOTIFY_STATE_FILE ?= /var/run/network_check.state
-NOTIFY_COOLDOWN   ?= 3600
-REBOOT_COOLDOWN   ?= 7200
+NOTIFY_COOLDOWN       ?= 3600
+REBOOT_COOLDOWN       ?= 7200
+TRACEROUTE_ADDRESS    ?=
+REBOOT_HOP_THRESHOLD  ?= 2
 
 # Build the optional --email-recipients argument only when a value is provided.
 ifneq ($(EMAIL_RECIPIENTS),)
   EMAIL_ARG = --email-recipients $(EMAIL_RECIPIENTS)
 else
   EMAIL_ARG =
+endif
+
+# Build the optional --traceroute-address argument only when a value is provided.
+# --reboot-hop-threshold is bundled here because it is meaningless without a
+# traceroute address.
+ifneq ($(TRACEROUTE_ADDRESS),)
+  TRACEROUTE_ARG = --traceroute-address $(TRACEROUTE_ADDRESS) --reboot-hop-threshold $(REBOOT_HOP_THRESHOLD)
+else
+  TRACEROUTE_ARG =
 endif
 
 # ── Targets ───────────────────────────────────────────────────────────────────
@@ -53,6 +64,7 @@ network_check.service: network_check.service.in
 	  -e 's|@@NOTIFY_STATE_FILE@@|$(NOTIFY_STATE_FILE)|' \
 	  -e 's|@@NOTIFY_COOLDOWN@@|$(NOTIFY_COOLDOWN)|' \
 	  -e 's|@@REBOOT_COOLDOWN@@|$(REBOOT_COOLDOWN)|' \
+	  -e 's|@@TRACEROUTE_ARG@@|$(TRACEROUTE_ARG)|' \
 	  $< > $@
 
 # ── Linting ───────────────────────────────────────────────────────────────────

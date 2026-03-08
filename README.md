@@ -34,6 +34,8 @@ duration and number of reboots performed, and the state file is removed.
 | `--notify-state-file` | `/var/run/network_check.state` | Path to the JSON file used to track outage state across invocations |
 | `--notify-cooldown` | `3600` | Minimum seconds between repeat failure emails (1 hour) |
 | `--reboot-cooldown` | `7200` | Minimum seconds between modem reboots (2 hours); first failure only starts the clock |
+| `--traceroute-address` | _(none)_ | IPv4 address to traceroute to on confirmed ping failure; if unset, a reboot is always attempted (original behaviour) |
+| `--reboot-hop-threshold` | `2` | Only reboot if the first fully-silent traceroute hop is ≤ this value; failures beyond the threshold are upstream of the modem |
 
 ## Example
 
