@@ -9,6 +9,9 @@ ExecStart=/usr/bin/network_check \
     --retry-count @@RETRY_COUNT@@ \
     --addresses @@PING_ADDRESSES@@ \
     @@EMAIL_ARG@@ \
+    --notify-state-file @@NOTIFY_STATE_FILE@@ \
+    --notify-cooldown @@NOTIFY_COOLDOWN@@ \
+    --reboot-cooldown @@REBOOT_COOLDOWN@@ \
     --exec-on-fail "/usr/sbin/gpio_control -d @@GPIO_DELAY@@ -p @@GPIO_PIN@@"
 
 [Install]

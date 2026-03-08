@@ -5,15 +5,21 @@ that powers a modem.  It will confirm whether internet access is available and
 then act accordingly.
 
 The `network_check.py` script is invoked on a schedule (default: every 30
-minutes via the bundled systemd timer) to avoid rebooting the modem too
-aggressively.  Since the connection could be down for reasons unrelated to the
-modem, keep in mind that this tool will cycle the outlet regardless of root
-cause.  Excessive cycling can cause wear, so consider tuning `--retry-count`
-and `--retry-interval` appropriately.
+minutes via the bundled systemd timer) to detect outages quickly.  Because
+run frequency and reboot/notification frequency are decoupled via cooldown
+timers, the script can safely be run much more often — every 5 minutes, for
+example — without risking modem over-cycling or email floods.
 
 If the internet is sufficiently deemed to be "down" (>50% packet loss to >50%
 of targets) then `network_check.py` will invoke `gpio_control` (or any other
 command you specify) to cycle the power outlet and reboot the modem.
+
+Outage state is persisted to a JSON file across invocations.  On the **first**
+detected failure the reboot cooldown clock starts but no reboot is issued,
+avoiding unnecessary cycles for brief transient outages.  Subsequent failures
+reboot the modem at most once per `--reboot-cooldown` period.  When
+connectivity is restored, a recovery email is sent summarising the outage
+duration and number of reboots performed, and the state file is removed.
 
 ## Default values
 
@@ -23,8 +29,11 @@ command you specify) to cycle the power outlet and reboot the modem.
 | `--retry-count` | `2` | Rounds of pings before acting on failure |
 | `--retry-interval` | `30` | Seconds between retries; consider `900` (15 min) in production |
 | `--exec-on-fail` | _(none)_ | Command to run on confirmed failure |
-| `--email-recipients` | _(none)_ | Space-separated list of email addresses to notify on failure |
+| `--email-recipients` | _(none)_ | Space-separated list of email addresses to notify on failure and recovery |
 | `--email-relay` | `localhost` | SMTP relay host to use when sending notifications |
+| `--notify-state-file` | `/var/run/network_check.state` | Path to the JSON file used to track outage state across invocations |
+| `--notify-cooldown` | `3600` | Minimum seconds between repeat failure emails (1 hour) |
+| `--reboot-cooldown` | `7200` | Minimum seconds between modem reboots (2 hours); first failure only starts the clock |
 
 ## Example
 
@@ -67,7 +76,8 @@ make
 
 # Install, passing your site-specific config on the command line.
 # EMAIL_RECIPIENTS is optional — omit it if you don't want notifications.
-sudo make install EMAIL_RECIPIENTS="you@example.com" GPIO_PIN=23 GPIO_DELAY=30
+sudo make install EMAIL_RECIPIENTS="you@example.com" GPIO_PIN=23 GPIO_DELAY=30 \
+                  REBOOT_COOLDOWN=7200 NOTIFY_COOLDOWN=3600
 
 # Verify the timer is active
 sudo systemctl list-timers --all | grep network_check
@@ -121,9 +131,9 @@ for pinout details.
   or pass `--break-system-packages` if you prefer a system-wide install.
 - **IPv6 / hostnames:** `--addresses` only accepts IPv4 addresses.  Hostnames
   and IPv6 addresses will fail validation.
-- **Email queuing:** If the internet is down for an extended period, multiple
-  failure emails may queue on the local MTA and be delivered in bulk once
-  connectivity is restored.
+- **Email delivery delay:** Failure and recovery emails are queued on the local
+  MTA and won't be delivered until connectivity is restored.  The timestamp
+  in each subject line indicates when the event actually occurred.
 
 ## Equipment used
 

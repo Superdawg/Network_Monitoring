@@ -12,12 +12,15 @@ BINDIR      = /usr/bin
 # Override any of these on the command line, e.g.:
 #   sudo make install EMAIL_RECIPIENTS="you@example.com" GPIO_PIN=23
 #
-PING_ADDRESSES   ?= 75.75.75.75 8.8.8.8 1.1.1.1
-RETRY_INTERVAL   ?= 30
-RETRY_COUNT      ?= 2
-GPIO_PIN         ?= 23
-GPIO_DELAY       ?= 30
-EMAIL_RECIPIENTS ?=
+PING_ADDRESSES    ?= 75.75.75.75 8.8.8.8 1.1.1.1
+RETRY_INTERVAL    ?= 30
+RETRY_COUNT       ?= 2
+GPIO_PIN          ?= 23
+GPIO_DELAY        ?= 30
+EMAIL_RECIPIENTS  ?=
+NOTIFY_STATE_FILE ?= /var/run/network_check.state
+NOTIFY_COOLDOWN   ?= 3600
+REBOOT_COOLDOWN   ?= 7200
 
 # Build the optional --email-recipients argument only when a value is provided.
 ifneq ($(EMAIL_RECIPIENTS),)
@@ -47,6 +50,9 @@ network_check.service: network_check.service.in
 	  -e 's|@@EMAIL_ARG@@|$(EMAIL_ARG)|' \
 	  -e 's|@@GPIO_DELAY@@|$(GPIO_DELAY)|' \
 	  -e 's|@@GPIO_PIN@@|$(GPIO_PIN)|' \
+	  -e 's|@@NOTIFY_STATE_FILE@@|$(NOTIFY_STATE_FILE)|' \
+	  -e 's|@@NOTIFY_COOLDOWN@@|$(NOTIFY_COOLDOWN)|' \
+	  -e 's|@@REBOOT_COOLDOWN@@|$(REBOOT_COOLDOWN)|' \
 	  $< > $@
 
 # ── Linting ───────────────────────────────────────────────────────────────────
