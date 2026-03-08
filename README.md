@@ -65,20 +65,18 @@ python3 -m venv .venv
 # Build the gpio_control binary
 make
 
-# Edit the service file to set your email address and preferred GPIO pin
-# before installing:
-#   ExecStart=... --email-recipients you@example.com --exec-on-fail "..."
-$EDITOR network_check.service
-
-sudo make install
+# Install, passing your site-specific config on the command line.
+# EMAIL_RECIPIENTS is optional — omit it if you don't want notifications.
+sudo make install EMAIL_RECIPIENTS="you@example.com" GPIO_PIN=23 GPIO_DELAY=30
 
 # Verify the timer is active
 sudo systemctl list-timers --all | grep network_check
 ```
 
-> **Important:** Edit `network_check.service` and replace `user@email.com`
-> with a real address before running `sudo make install`.  The service will
-> work without it, but you won't receive failure notifications.
+> **Note:** `network_check.service` is generated from `network_check.service.in`
+> during `make install` and is excluded from version control so credentials
+> don't accidentally get committed.  If you omit `EMAIL_RECIPIENTS`, the
+> `--email-recipients` argument is simply left out of the generated service.
 
 ## Linting
 

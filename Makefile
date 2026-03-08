@@ -1,11 +1,33 @@
-PROGS    = gpio_control
-CC       ?= gcc
-CFLAGS   ?= -Wall -Wextra -Wpedantic -O2
-LDFLAGS  ?= -lpigpio -lrt -lpthread
+# ── Toolchain ─────────────────────────────────────────────────────────────────
+CC      ?= gcc
+CFLAGS  ?= -Wall -Wextra -Wpedantic -O2
+LDFLAGS ?= -lpigpio -lrt -lpthread
 
+# ── Install paths ─────────────────────────────────────────────────────────────
 SYSTEMD_DIR = /usr/lib/systemd/system
 SBINDIR     = /usr/sbin
 BINDIR      = /usr/bin
+
+# ── Service configuration ─────────────────────────────────────────────────────
+# Override any of these on the command line, e.g.:
+#   sudo make install EMAIL_RECIPIENTS="you@example.com" GPIO_PIN=23
+#
+PING_ADDRESSES   ?= 75.75.75.75 8.8.8.8 1.1.1.1
+RETRY_INTERVAL   ?= 30
+RETRY_COUNT      ?= 2
+GPIO_PIN         ?= 23
+GPIO_DELAY       ?= 30
+EMAIL_RECIPIENTS ?=
+
+# Build the optional --email-recipients argument only when a value is provided.
+ifneq ($(EMAIL_RECIPIENTS),)
+  EMAIL_ARG = --email-recipients $(EMAIL_RECIPIENTS)
+else
+  EMAIL_ARG =
+endif
+
+# ── Targets ───────────────────────────────────────────────────────────────────
+PROGS = gpio_control
 
 .PHONY: all clean install uninstall lint lint-c lint-py
 
@@ -13,10 +35,21 @@ all: $(PROGS)
 
 $(PROGS): $(PROGS).c
 	@echo "Building $@"
-	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
-# ── Linting ─────────────────────────────────────────────────────────────────
+# Generate the service file from the template, substituting configuration.
+# This file is .gitignore'd so real credentials never land in version control.
+network_check.service: network_check.service.in
+	sed \
+	  -e 's|@@PING_ADDRESSES@@|$(PING_ADDRESSES)|' \
+	  -e 's|@@RETRY_INTERVAL@@|$(RETRY_INTERVAL)|' \
+	  -e 's|@@RETRY_COUNT@@|$(RETRY_COUNT)|' \
+	  -e 's|@@EMAIL_ARG@@|$(EMAIL_ARG)|' \
+	  -e 's|@@GPIO_DELAY@@|$(GPIO_DELAY)|' \
+	  -e 's|@@GPIO_PIN@@|$(GPIO_PIN)|' \
+	  $< > $@
 
+# ── Linting ───────────────────────────────────────────────────────────────────
 lint: lint-c lint-py
 
 lint-c:
@@ -32,8 +65,7 @@ lint-py:
 	pylint --max-line-length=100 network_check.py
 
 # ── Install / Uninstall ───────────────────────────────────────────────────────
-
-install: $(PROGS)
+install: $(PROGS) network_check.service
 	@echo "Installing gpio_control to $(SBINDIR)"
 	install -m 4755 -o root -g root gpio_control $(SBINDIR)/gpio_control
 	@echo "Installing network_check to $(BINDIR)"
@@ -58,4 +90,4 @@ uninstall:
 	rm -f $(BINDIR)/network_check
 
 clean:
-	rm -vf $(PROGS)
+	rm -vf $(PROGS) network_check.service
