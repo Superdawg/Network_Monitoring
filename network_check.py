@@ -1,15 +1,23 @@
 #!/usr/bin/python3
-#
-# Synopsis:
-# ./network_check.py --addresses a.b.c.d[,...]
-#                  [ --retry-interval int ]
-#                  [ --retry-count int ]
-#                  [ --exec-on-fail /path/to/script ]
-#                  [ --email-recipients addr [addr ...] ]
-#                  [ --email-relay host ]
-#                  [ --notify-state-file /path/to/state ]
-#                  [ --notify-cooldown int ]
-#                  [ --reboot-cooldown int ]
+"""
+Monitor internet connectivity by pinging a set of hosts and cycling a
+GPIO-controlled power outlet to reboot the modem on confirmed failure.
+
+Outage state is persisted across invocations so that reboots and failure
+notifications are rate-limited independently of how frequently the script
+is scheduled to run.  A recovery email is sent when connectivity returns.
+
+Synopsis:
+  ./network_check.py --addresses a.b.c.d[,...]
+                   [ --retry-interval int ]
+                   [ --retry-count int ]
+                   [ --exec-on-fail /path/to/script ]
+                   [ --email-recipients addr [addr ...] ]
+                   [ --email-relay host ]
+                   [ --notify-state-file /path/to/state ]
+                   [ --notify-cooldown int ]
+                   [ --reboot-cooldown int ]
+"""
 
 import argparse
 from email.message import EmailMessage
@@ -26,7 +34,10 @@ import time
 import pingparsing
 
 
-class Logger(object):
+class Logger:
+    """Thin wrapper around the standard logging module providing a pre-configured
+    logger with a consistent format, optionally writing to a log file."""
+
     def __init__(self, name, filename=None):
         self.logger_name = name
 
@@ -36,6 +47,7 @@ class Logger(object):
             self.filename = None
 
     def get_logger(self):
+        """Build and return the configured logger instance."""
         logger = logging.getLogger(self.logger_name)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
@@ -51,7 +63,10 @@ class Logger(object):
         return logger
 
 
-class NetworkMonitor(object):
+class NetworkMonitor:
+    """Monitors internet connectivity by pinging known hosts and acting on
+    confirmed failures according to configurable retry and cooldown policies."""
+
     def __init__(self):
         self.log = Logger(name="NetworkMonitor").get_logger()
         self.ping_parse = pingparsing.PingParsing()
@@ -69,6 +84,7 @@ class NetworkMonitor(object):
         self.store_addresses(self.addresses)
 
     def parse_args(self):
+        """Parse command-line arguments and store them as instance attributes."""
         parser = argparse.ArgumentParser(
                 description=("Ping a number of hosts to determine whether "
                              "internet is functional and react accordingly"))
@@ -308,6 +324,8 @@ class NetworkMonitor(object):
         smtp.quit()
 
     def run(self):
+        """Run ping tests in a loop until connectivity is confirmed or the retry
+        limit is exceeded, then act on failure or send a recovery notification."""
         # Continue to run ping tests until we determine that we're not
         # experiencing an outage
         loop = 0
@@ -384,6 +402,7 @@ class NetworkMonitor(object):
                 self.failed_ping.append(address)
 
     def print_stats(self):
+        """Print the full address statistics dictionary to stdout."""
         pprint.pprint(self.address_list)
 
     def sleep_if_failed(self):
