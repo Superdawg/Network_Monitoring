@@ -63,7 +63,7 @@ class NetworkMonitor(object):
             sys.exit(1)
 
         self.keepTesting = 1
-
+        self.failedPing = []
         self.numPings = 10
 
         self.storeAddresses(self.addresses)
@@ -249,7 +249,7 @@ class NetworkMonitor(object):
         """
         if os.path.exists(self.notifyStateFile):
             try:
-                with open(self.notifyStateFile, 'r') as f:
+                with open(self.notifyStateFile, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except (OSError, ValueError):
                 self.log.warning(f"Could not read state file {self.notifyStateFile}; "
@@ -266,7 +266,7 @@ class NetworkMonitor(object):
         Persist the outage state to disk.
         """
         try:
-            with open(self.notifyStateFile, 'w') as f:
+            with open(self.notifyStateFile, 'w', encoding='utf-8') as f:
                 json.dump(state, f)
         except OSError as e:
             self.log.error(f"Could not write state file {self.notifyStateFile}: {e}")
