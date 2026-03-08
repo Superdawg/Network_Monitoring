@@ -1,0 +1,12 @@
+[MESSAGES CONTROL]
+disable=
+    # f-strings in logging calls are intentional — the logger is always set
+    # to DEBUG so lazy formatting provides no benefit in this project.
+    W1203,
+    # pingparsing is a runtime dependency not available in the lint
+    # environment; suppress the spurious import-error.
+    E0401
+
+[TYPECHECK]
+# Prevent pylint from flagging pingparsing attributes as unknown.
+ignored-modules=pingparsing

@@ -1,0 +1,4 @@
+# Development and linting tools — not required to run the software.
+# Install with: pip install -r requirements-dev.txt
+flake8
+pylint
