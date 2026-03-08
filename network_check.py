@@ -181,11 +181,17 @@ class NetworkMonitor(object):
         now = time.time()
         state = self.loadState()
 
-        # Rate-limit reboots: only reboot if no prior reboot has occurred
-        # within the reboot cooldown window.
+        # Rate-limit reboots.  On the first failure, start the cooldown clock
+        # without rebooting so that a single blip never cycles the modem.
+        # Subsequent failures reboot once the cooldown window has elapsed.
         if self.failScript is not None:
             last_reboot = state['last_reboot_time']
-            if last_reboot is None or (now - last_reboot) >= self.rebootCooldown:
+            if last_reboot is None:
+                self.log.warning("First failure detected. Reboot will trigger "
+                                 "after cooldown (%.0f seconds)." %
+                                 self.rebootCooldown)
+                state['last_reboot_time'] = now
+            elif (now - last_reboot) >= self.rebootCooldown:
                 self.log.info("Running %s" % self.failScript)
                 subprocess.call(self.failScript, shell=True)
                 state['last_reboot_time'] = now
