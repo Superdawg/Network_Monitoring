@@ -9,7 +9,6 @@
 import argparse
 from email.message import EmailMessage
 import logging
-import os
 import pingparsing
 import pprint
 import smtplib
@@ -17,6 +16,7 @@ import socket
 import subprocess
 import sys
 import time
+
 
 class Logger(object):
     def __init__(self, name, filename=None):
@@ -42,14 +42,15 @@ class Logger(object):
             logger.addHandler(fhandler)
         return logger
 
+
 class NetworkMonitor(object):
     def __init__(self):
-        self.log = Logger(name = "NetworkMonitor").getLogger()
+        self.log = Logger(name="NetworkMonitor").getLogger()
         self.ping_parse = pingparsing.PingParsing()
         self.parseArgs()
         try:
             self.hostname = socket.getfqdn()
-        except Exception as error:
+        except Exception:
             self.log.error("Unable to detect proper hostname")
             sys.exit(1)
 
@@ -114,7 +115,7 @@ class NetworkMonitor(object):
             self.log.error("Invalid IP address specified in list (%s)" %
                            ', '.join(args.addresses))
             fail = 1
-        #XXX: There is no validation against the fail_script since it can be
+        # XXX: There is no validation against the fail_script since it can be
         #     anything from another script, to a full on command (like what is
         #     specified in the README.md for this project)
 
@@ -137,7 +138,7 @@ class NetworkMonitor(object):
         for ip in addresses:
             try:
                 socket.inet_aton(ip)
-            #XXX: Generic exception catch.  Maybe it'll fail on something else,
+            # XXX: Generic exception catch.  Maybe it'll fail on something else,
             #     but we'll be trusting for now.
             except Exception:
                 self.log.error("IP address (%s) is invalid" % ip)
@@ -178,11 +179,11 @@ class NetworkMonitor(object):
         # If this event triggers, that means internet is considered to be down.
         # This message won't be delivered until internet connectivity has been
         # restored.
-        #XXX: If the connection is down for a long time, then there could be a
+        # XXX: If the connection is down for a long time, then there could be a
         #     large number of these messages queued up.  This should probably
         #     be taken into account somehow.
         message['Subject'] = ("[NETWORK FAILURE] %s - %s" %
-            (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
+                              (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
         message['From'] = ("network_check@%s" % self.hostname)
         message['To'] = ', '.join(self.emails)
 
@@ -218,7 +219,8 @@ class NetworkMonitor(object):
 
                     ping_results = ping_transmitter.ping()
 
-                    self.addressList[address]['Stats'] = self.ping_parse.parse(ping_results).as_dict()
+                    result = self.ping_parse.parse(ping_results)
+                    self.addressList[address]['Stats'] = result.as_dict()
 
                 loop += 1
 
@@ -228,7 +230,6 @@ class NetworkMonitor(object):
                 # Look at the results and sleep if there is any amount of
                 # failure.  Otherwise just return for the next loop.
                 self.sleepIfFailed()
-
 
     def storeAddresses(self, addresses):
         """
@@ -247,21 +248,21 @@ class NetworkMonitor(object):
         """
         for address in self.addressList:
             self.log.info("%s - Sent/Received: %s/%s" %
-                         (address,
-                          self.addressList[address]['Stats']['packet_transmit'],
-                          self.addressList[address]['Stats']['packet_receive']))
+                          (address,
+                           self.addressList[address]['Stats']['packet_transmit'],
+                           self.addressList[address]['Stats']['packet_receive']))
 
             # If any particular host has 50% or more packet loss, then they
             # should be added to the list of failed pings.
             if ((self.addressList[address]['Stats']['packet_loss_rate'] is None) or
-                (self.addressList[address]['Stats']['packet_loss_rate'] >= 50)):
+                    (self.addressList[address]['Stats']['packet_loss_rate'] >= 50)):
                 self.log.warning("Packet loss for %s: %s" %
                                  (address,
                                   self.addressList[address]['Stats']['packet_loss_rate']))
                 self.failedPing.append(address)
 
     def printStats(self):
-            pprint.pprint(self.addressList)
+        pprint.pprint(self.addressList)
 
     def sleepIfFailed(self):
         """
@@ -281,13 +282,14 @@ class NetworkMonitor(object):
         failedRate = len(self.failedPing) / len(self.addressList)
         if failedRate >= 0.5:
             self.log.warning("Failed host rate (%s) matches >=50%%. Retrying in %s seconds" %
-                            (failedRate, self.retryInterval))
+                             (failedRate, self.retryInterval))
             time.sleep(self.retryInterval)
         else:
             self.log.info("Failed host rate (%s) < 50%%.  Moving along." % (failedRate))
             # Clear our Keep Testing flag since we didn't notice more than 50%
             # of the hosts as being unreachable.
             self.keepTesting = 0
+
 
 if __name__ == "__main__":
     NM = NetworkMonitor()
