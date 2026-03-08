@@ -25,14 +25,19 @@ is excluded from version control (see `.gitignore`).
 
 ### Python
 - Follow PEP 8.  Max line length is **100 characters**.
+- Use f-strings for all string interpolation; do not use `%` formatting.
 - Linting is enforced via `make lint-py` (flake8 + pylint).
-- Run `make lint-py` and resolve all warnings before committing.
+- Always run `make lint-py` and resolve all warnings before committing.
+  Never invoke `flake8` or `pylint` directly — use the Makefile target so
+  flags and options stay consistent.
 - Use `# TODO:` for known deferred work; use plain comments for design notes.
 - Do not use bare `except Exception` — catch the specific exception type.
 
 ### C
 - Compile with `-Wall -Wextra -Wpedantic`.
-- Linting via `make lint-c` (cppcheck + `gcc -fsyntax-only`).
+- Always run `make lint-c` and resolve all warnings before committing.
+  Never invoke `cppcheck` or `gcc -fsyntax-only` directly — use the
+  Makefile target.
 - Always initialise buffers before use (especially before `strcat`).
 - Use `GPIO_SIZE` (not `sizeof(array)`) when iterating over the GPIO pin list.
 - Call `gpioTerminate()` before any exit path.
