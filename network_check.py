@@ -115,9 +115,8 @@ class NetworkMonitor(object):
             self.log.error("Invalid IP address specified in list (%s)" %
                            ', '.join(args.addresses))
             fail = 1
-        # XXX: There is no validation against the fail_script since it can be
-        #     anything from another script, to a full on command (like what is
-        #     specified in the README.md for this project)
+        # No validation is performed on fail_script by design — it accepts
+        # arbitrary commands, as documented in README.md.
 
         self.retryInterval = args.retry_interval
         self.retryCount = args.retry_count
@@ -138,9 +137,7 @@ class NetworkMonitor(object):
         for ip in addresses:
             try:
                 socket.inet_aton(ip)
-            # XXX: Generic exception catch.  Maybe it'll fail on something else,
-            #     but we'll be trusting for now.
-            except Exception:
+            except OSError:
                 self.log.error("IP address (%s) is invalid" % ip)
                 return False
 
@@ -179,7 +176,7 @@ class NetworkMonitor(object):
         # If this event triggers, that means internet is considered to be down.
         # This message won't be delivered until internet connectivity has been
         # restored.
-        # XXX: If the connection is down for a long time, then there could be a
+        # TODO: If the connection is down for a long time, then there could be a
         #     large number of these messages queued up.  This should probably
         #     be taken into account somehow.
         message['Subject'] = ("[NETWORK FAILURE] %s - %s" %
