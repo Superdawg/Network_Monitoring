@@ -131,13 +131,11 @@ class NetworkMonitor(object):
 
         fail = 0
         if ((args.retry_interval < 0) or (args.retry_count < 0)):
-            self.log.error(("Invalid retry interval (%i) or retry count(%i) "
-                            "requested.") %
-                           (args.retry_interval, args.retry_count))
+            self.log.error(f"Invalid retry interval ({args.retry_interval}) or "
+                           f"retry count ({args.retry_count}) requested.")
             fail = 1
         if not self.verifyAddressFormat(args.addresses):
-            self.log.error("Invalid IP address specified in list (%s)" %
-                           ', '.join(args.addresses))
+            self.log.error(f"Invalid IP address specified in list ({', '.join(args.addresses)})")
             fail = 1
         # No validation is performed on fail_script by design — it accepts
         # arbitrary commands, as documented in README.md.
@@ -165,7 +163,7 @@ class NetworkMonitor(object):
             try:
                 socket.inet_aton(ip)
             except OSError:
-                self.log.error("IP address (%s) is invalid" % ip)
+                self.log.error(f"IP address ({ip}) is invalid")
                 return False
 
         return True
@@ -187,19 +185,18 @@ class NetworkMonitor(object):
         if self.failScript is not None:
             last_reboot = state['last_reboot_time']
             if last_reboot is None:
-                self.log.warning("First failure detected. Reboot will trigger "
-                                 "after cooldown (%.0f seconds)." %
-                                 self.rebootCooldown)
+                self.log.warning(f"First failure detected. Reboot will trigger "
+                                 f"after cooldown ({self.rebootCooldown:.0f} seconds).")
                 state['last_reboot_time'] = now
             elif (now - last_reboot) >= self.rebootCooldown:
-                self.log.info("Running %s" % self.failScript)
+                self.log.info(f"Running {self.failScript}")
                 subprocess.call(self.failScript, shell=True)
                 state['last_reboot_time'] = now
                 state['reboot_count'] += 1
             else:
                 remaining = self.rebootCooldown - (now - last_reboot)
-                self.log.warning("Reboot cooldown active. Next reboot "
-                                 "eligible in %.0f seconds." % remaining)
+                self.log.warning(f"Reboot cooldown active. Next reboot "
+                                 f"eligible in {remaining:.0f} seconds.")
 
         # Rate-limit failure notifications.
         last_notify = state['last_notify_time']
@@ -208,8 +205,8 @@ class NetworkMonitor(object):
             state['last_notify_time'] = now
         else:
             remaining = self.notifyCooldown - (now - last_notify)
-            self.log.info("Notification cooldown active. Next notification "
-                          "eligible in %.0f seconds." % remaining)
+            self.log.info(f"Notification cooldown active. Next notification "
+                          f"eligible in {remaining:.0f} seconds.")
 
         self.saveState(state)
         sys.exit(1)
@@ -223,20 +220,19 @@ class NetworkMonitor(object):
             return
 
         message = EmailMessage()
-        message.set_content(("The Network Monitoring Script has taken action "
-                             "to reboot the modem.  Please review the "
-                             "statistics to verify the results."
-                             "\n\n"
-                             "Stats: %s" % pprint.pformat(self.addressList)))
+        message.set_content("The Network Monitoring Script has taken action "
+                            "to reboot the modem.  Please review the "
+                            "statistics to verify the results."
+                            "\n\n"
+                            f"Stats: {pprint.pformat(self.addressList)}")
 
         # Keeping a timestamp in the subject is important since this message
         # may be getting delivered significantly later than the actual action.
         # If this event triggers, that means internet is considered to be down.
         # This message won't be delivered until internet connectivity has been
         # restored.
-        message['Subject'] = ("[NETWORK FAILURE] %s - %s" %
-                              (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
-        message['From'] = ("network_check@%s" % self.hostname)
+        message['Subject'] = f"[NETWORK FAILURE] {time.strftime('%Y%m%d-%H%M%S')} - {self.hostname}"
+        message['From'] = f"network_check@{self.hostname}"
         message['To'] = ', '.join(self.emails)
 
         # Now that we're finished assembling the message, let's send it along.
@@ -256,8 +252,8 @@ class NetworkMonitor(object):
                 with open(self.notifyStateFile, 'r') as f:
                     return json.load(f)
             except (OSError, ValueError):
-                self.log.warning("Could not read state file %s; starting "
-                                 "fresh." % self.notifyStateFile)
+                self.log.warning(f"Could not read state file {self.notifyStateFile}; "
+                                 f"starting fresh.")
         return {
             'first_failure_time': time.time(),
             'last_reboot_time': None,
@@ -273,8 +269,7 @@ class NetworkMonitor(object):
             with open(self.notifyStateFile, 'w') as f:
                 json.dump(state, f)
         except OSError as e:
-            self.log.error("Could not write state file %s: %s" %
-                           (self.notifyStateFile, e))
+            self.log.error(f"Could not write state file {self.notifyStateFile}: {e}")
 
     def clearState(self):
         """
@@ -284,8 +279,7 @@ class NetworkMonitor(object):
             try:
                 os.remove(self.notifyStateFile)
             except OSError as e:
-                self.log.error("Could not remove state file %s: %s" %
-                               (self.notifyStateFile, e))
+                self.log.error(f"Could not remove state file {self.notifyStateFile}: {e}")
 
     def notifyRecovery(self, state):
         """
@@ -301,13 +295,12 @@ class NetworkMonitor(object):
 
         message = EmailMessage()
         message.set_content(
-            ("Internet connectivity has been restored on %s.\n\n"
-             "Outage duration:            %d hour(s) %d minute(s)\n"
-             "Modem reboots during outage: %d") %
-            (self.hostname, hours, minutes, state['reboot_count']))
-        message['Subject'] = ("[NETWORK RECOVERY] %s - %s" %
-                              (time.strftime("%Y%m%d-%H%M%S"), self.hostname))
-        message['From'] = ("network_check@%s" % self.hostname)
+            f"Internet connectivity has been restored on {self.hostname}.\n\n"
+            f"Outage duration:            {hours} hour(s) {minutes} minute(s)\n"
+            f"Modem reboots during outage: {state['reboot_count']}")
+        timestamp = time.strftime('%Y%m%d-%H%M%S')
+        message['Subject'] = f"[NETWORK RECOVERY] {timestamp} - {self.hostname}"
+        message['From'] = f"network_check@{self.hostname}"
         message['To'] = ', '.join(self.emails)
 
         smtp = smtplib.SMTP(self.relay)
@@ -323,8 +316,7 @@ class NetworkMonitor(object):
             # keep adding the same hosts every time if they are down.
             self.failedPing = []
 
-            self.log.info("Loop: %i, retry count max: %i" % (loop,
-                                                             self.retryCount))
+            self.log.info(f"Loop: {loop}, retry count max: {self.retryCount}")
             # Only act on a failure if we've hit the final loop AND we have
             # failures noted from the last round.
             if (loop > self.retryCount):
@@ -334,7 +326,7 @@ class NetworkMonitor(object):
                 self.keepTesting = 0
             else:
                 for address in self.addressList:
-                    self.log.info("Checking Address '%s'" % address)
+                    self.log.info(f"Checking Address '{address}'")
                     ping_transmitter = pingparsing.PingTransmitter()
                     ping_transmitter.destination = address
                     ping_transmitter.count = self.numPings
@@ -377,18 +369,18 @@ class NetworkMonitor(object):
         later.
         """
         for address in self.addressList:
-            self.log.info("%s - Sent/Received: %s/%s" %
-                          (address,
-                           self.addressList[address]['Stats']['packet_transmit'],
-                           self.addressList[address]['Stats']['packet_receive']))
+            self.log.info(
+                f"{address} - Sent/Received: "
+                f"{self.addressList[address]['Stats']['packet_transmit']}/"
+                f"{self.addressList[address]['Stats']['packet_receive']}")
 
             # If any particular host has 50% or more packet loss, then they
             # should be added to the list of failed pings.
             if ((self.addressList[address]['Stats']['packet_loss_rate'] is None) or
                     (self.addressList[address]['Stats']['packet_loss_rate'] >= 50)):
-                self.log.warning("Packet loss for %s: %s" %
-                                 (address,
-                                  self.addressList[address]['Stats']['packet_loss_rate']))
+                self.log.warning(
+                    f"Packet loss for {address}: "
+                    f"{self.addressList[address]['Stats']['packet_loss_rate']}")
                 self.failedPing.append(address)
 
     def printStats(self):
@@ -411,11 +403,11 @@ class NetworkMonitor(object):
         # so that we can loop around when we finish.
         failedRate = len(self.failedPing) / len(self.addressList)
         if failedRate >= 0.5:
-            self.log.warning("Failed host rate (%s) matches >=50%%. Retrying in %s seconds" %
-                             (failedRate, self.retryInterval))
+            self.log.warning(f"Failed host rate ({failedRate}) matches >=50%. "
+                             f"Retrying in {self.retryInterval} seconds")
             time.sleep(self.retryInterval)
         else:
-            self.log.info("Failed host rate (%s) < 50%%.  Moving along." % (failedRate))
+            self.log.info(f"Failed host rate ({failedRate}) < 50%.  Moving along.")
             # Clear our Keep Testing flag since we didn't notice more than 50%
             # of the hosts as being unreachable.
             self.keepTesting = 0
