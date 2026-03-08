@@ -5,8 +5,16 @@ disable=
     W1203,
     # pingparsing is a runtime dependency not available in the lint
     # environment; suppress the spurious import-error.
-    E0401
+    E0401,
+    # Logger is an intentional minimal wrapper with one public method;
+    # adding a second would be noise.
+    R0903
 
 [TYPECHECK]
 # Prevent pylint from flagging pingparsing attributes as unknown.
 ignored-modules=pingparsing
+
+[DESIGN]
+# NetworkMonitor holds 16 legitimate config/state attributes; the default
+# threshold of 7 is too low for a class of this scope.
+max-attributes=20
