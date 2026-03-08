@@ -82,14 +82,3 @@ When adding a new argument to `network_check.py` that belongs in the service:
   the change was made and any non-obvious consequences.
 - Co-author line: `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`
 
-## Known open issues (C code)
-
-The following bugs exist in `gpio_control.c` and have not yet been fixed:
-
-- `sizeof(gpio)` on line 56 returns bytes (40), not elements (10) — use
-  `GPIO_SIZE` instead.
-- `char csv_pins[1024]` is uninitialised before `strcat()` — add
-  `csv_pins[0] = '\0';` after declaration.
-- `print_csv_pins` is declared `const char *` but has no `return` statement.
-- Default `pin = 18` is not in the validated allowlist and is never checked.
-- `gpioTerminate()` is never called before exit.
