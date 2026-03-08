@@ -1,0 +1,10 @@
+# Compiled binary
+gpio_control
+
+# Generated service file (contains site-specific config; built by 'make install')
+network_check.service
+
+# Python
+__pycache__/
+*.pyc
+.venv/
