@@ -36,7 +36,7 @@ class Logger(object):
             self.filename = None
 
     def get_logger(self):
-        logger = logging.get_logger(self.logger_name)
+        logger = logging.getLogger(self.logger_name)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
                 '%(asctime)s - %(levelname)s-%(name)s-[%(process)d] %(message)s')
