@@ -72,6 +72,9 @@ When adding a new argument to `network_check.py` that belongs in the service:
 - Keep the **Default values** table in `README.md` in sync with `parseArgs()`
   defaults and Makefile variable defaults — all three should agree.
 - Update `README.md` whenever behaviour, defaults, or install steps change.
+  This includes **both** the prose description and the Default values table —
+  the prose must accurately reflect how the feature works, not just that the
+  argument exists.
 - The synopsis comment at the top of `network_check.py` must list all accepted
   arguments.
 

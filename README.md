@@ -14,6 +14,15 @@ If the internet is sufficiently deemed to be "down" (>50% packet loss to >50%
 of targets) then `network_check.py` will invoke `gpio_control` (or any other
 command you specify) to cycle the power outlet and reboot the modem.
 
+When `--traceroute-address` is configured, a reboot is only triggered if the
+failure is close enough to the modem to be worth fixing.  On confirmed ping
+failure the script runs a traceroute and finds the first fully-unresponsive
+hop.  If that hop number is within `--reboot-hop-threshold` (default: 2,
+meaning the ISP's first router), the reboot proceeds.  If the failure is
+deeper in the network a reboot of the local modem is unlikely to help, so it
+is skipped; email notification still fires.  If the traceroute is inconclusive
+the script falls back to the original behaviour and attempts a reboot.
+
 Outage state is persisted to a JSON file across invocations.  On the **first**
 detected failure the reboot cooldown clock starts but no reboot is issued,
 avoiding unnecessary cycles for brief transient outages.  Subsequent failures
