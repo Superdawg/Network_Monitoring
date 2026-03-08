@@ -202,7 +202,9 @@ class NetworkMonitor(object):
 
             self.log.info("Loop: %i, retry count max: %i" % (loop,
                                                              self.retryCount))
-            if loop > self.retryCount:
+            # Only act on a failure if we've hit the final loop AND we have
+            # failures noted from the last round.
+            if (loop > self.retryCount):
                 self.log.warning(("Maximum Retry count exceeded.  Performing "
                                  "action."))
                 self.actOnFailure()
@@ -223,11 +225,9 @@ class NetworkMonitor(object):
                 # Account for the results from each of the ping tests.
                 self.processResults()
 
-                # I don't like this...  But for now... After we've incremented
-                # the loop counter, if we're at the limit, don't bother
-                # sleeping.
-                if loop <= self.retryCount:
-                    self.sleepIfFailed()
+                # Look at the results and sleep if there is any amount of
+                # failure.  Otherwise just return for the next loop.
+                self.sleepIfFailed()
 
 
     def storeAddresses(self, addresses):
@@ -272,6 +272,7 @@ class NetworkMonitor(object):
         # If we didn't have any failures added to the list, then we're done.
         if len(self.failedPing) == 0:
             self.keepTesting = 0
+            self.log.info("No failures to handle, moving along.")
             return
 
         # Determine whether the number of failed destionations is more than 50%
@@ -283,6 +284,7 @@ class NetworkMonitor(object):
                             (failedRate, self.retryInterval))
             time.sleep(self.retryInterval)
         else:
+            self.log.info("Failed host rate (%s) < 50%%.  Moving along." % (failedRate))
             # Clear our Keep Testing flag since we didn't notice more than 50%
             # of the hosts as being unreachable.
             self.keepTesting = 0
