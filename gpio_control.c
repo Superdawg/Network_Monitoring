@@ -13,7 +13,7 @@ int gpio[10] = { 5, 6, 16, 17, 22, 23, 24, 25, 26, 27 };
  * Assemble the list of acceptable pins in a comma-formatted (not separated)
  * list.
  **/
-const char *print_csv_pins(char* result)
+void print_csv_pins(char* result)
 {
         for (int i = 0; i < GPIO_SIZE; i++)
         {
@@ -34,6 +34,7 @@ const char *print_csv_pins(char* result)
 void printUsage(char arg[255])
 {
         char csv_pins[1024];
+        csv_pins[0] = '\0';
         print_csv_pins(csv_pins);
         fprintf(stderr, "Usage: %s [-d NUM] [-p NUM]\n", arg);
         fprintf(stderr, "\t-d\t Time (in seconds) to keep the pin activated\n");
@@ -53,7 +54,7 @@ int validatePin(int pin, char arg[255])
 {
         // Check the specified pin against the list and return if it's been
         // found.
-        for (int i = 0; i < sizeof(gpio); i++)
+        for (int i = 0; i < GPIO_SIZE; i++)
         {
                 if (gpio[i] == pin)
                 {
@@ -62,8 +63,10 @@ int validatePin(int pin, char arg[255])
         }
 
         char csv_pins[1024];
+        csv_pins[0] = '\0';
         print_csv_pins(csv_pins);
         fprintf(stderr, "Pin %i is not acceptable.  Must be one of %s\n", pin, csv_pins);
+        gpioTerminate();
         exit(1);
 
         return pin;
@@ -79,7 +82,7 @@ int main(int argc, char *argv[])
 
         int opt;
         int delay = 300;
-        int pin = 18;
+        int pin = -1;
         while ((opt = getopt(argc, argv, "d:p:")) != -1) {
                 switch (opt) {
                 case 'd':
@@ -89,9 +92,18 @@ int main(int argc, char *argv[])
                         pin = validatePin(atoi(optarg), argv[0]);
                         break;
                 default:
+                        gpioTerminate();
                         printUsage(argv[0]);
                 }
         }
+
+        if (pin == -1)
+        {
+                fprintf(stderr, "Error: -p PIN is required\n");
+                gpioTerminate();
+                printUsage(argv[0]);
+        }
+
         printf("Given delay %d\n", delay);
         printf("Given pin %d\n", pin);
 
@@ -107,5 +119,6 @@ int main(int argc, char *argv[])
         fprintf(stdout, "Turning pin %d off\n", pin);
         gpioWrite(pin, 0);
 
+        gpioTerminate();
         return 0;
 }
