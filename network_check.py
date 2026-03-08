@@ -97,7 +97,7 @@ class NetworkMonitor(object):
                             dest='email_relay',
                             type=str,
                             default='localhost',
-                            help=("The SMTP/MTA to use for sending the email"))
+                            help="The SMTP/MTA to use for sending the email")
         parser.add_argument("--retry-count",
                             dest="retry_count",
                             default=2,
@@ -126,7 +126,7 @@ class NetworkMonitor(object):
                             dest="reboot_cooldown",
                             default=7200,
                             type=int,
-                            help=("Minimum seconds between modem reboots"))
+                            help="Minimum seconds between modem reboots")
         args = parser.parse_args()
 
         fail = 0
@@ -319,13 +319,13 @@ class NetworkMonitor(object):
             self.log.info(f"Loop: {loop}, retry count max: {self.retryCount}")
             # Only act on a failure if we've hit the final loop AND we have
             # failures noted from the last round.
-            if (loop > self.retryCount):
+            if loop > self.retryCount:
                 self.log.warning(("Maximum Retry count exceeded.  Performing "
                                  "action."))
                 self.actOnFailure()
                 self.keepTesting = 0
             else:
-                for address in self.addressList:
+                for address, data in self.addressList.items():
                     self.log.info(f"Checking Address '{address}'")
                     ping_transmitter = pingparsing.PingTransmitter()
                     ping_transmitter.destination = address
@@ -334,7 +334,7 @@ class NetworkMonitor(object):
                     ping_results = ping_transmitter.ping()
 
                     result = self.ping_parse.parse(ping_results)
-                    self.addressList[address]['Stats'] = result.as_dict()
+                    data['Stats'] = result.as_dict()
 
                 loop += 1
 
@@ -368,19 +368,19 @@ class NetworkMonitor(object):
         packet loss.  If so, then add that destination to a list to look at
         later.
         """
-        for address in self.addressList:
+        for address, data in self.addressList.items():
             self.log.info(
                 f"{address} - Sent/Received: "
-                f"{self.addressList[address]['Stats']['packet_transmit']}/"
-                f"{self.addressList[address]['Stats']['packet_receive']}")
+                f"{data['Stats']['packet_transmit']}/"
+                f"{data['Stats']['packet_receive']}")
 
             # If any particular host has 50% or more packet loss, then they
             # should be added to the list of failed pings.
-            if ((self.addressList[address]['Stats']['packet_loss_rate'] is None) or
-                    (self.addressList[address]['Stats']['packet_loss_rate'] >= 50)):
+            if ((data['Stats']['packet_loss_rate'] is None) or
+                    (data['Stats']['packet_loss_rate'] >= 50)):
                 self.log.warning(
                     f"Packet loss for {address}: "
-                    f"{self.addressList[address]['Stats']['packet_loss_rate']}")
+                    f"{data['Stats']['packet_loss_rate']}")
                 self.failedPing.append(address)
 
     def printStats(self):
