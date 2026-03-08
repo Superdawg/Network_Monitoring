@@ -82,3 +82,11 @@ When adding a new argument to `network_check.py` that belongs in the service:
   the change was made and any non-obvious consequences.
 - Co-author line: `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`
 
+## Committing changes
+
+- Always run `make lint` and resolve all warnings **before** committing.
+- Commit all modified files at the end of every change session — do not
+  leave work uncommitted.
+- Stage specific files by name; avoid `git add -A` or `git add .`.
+- Use a single commit per logical change; do not bundle unrelated fixes.
+
